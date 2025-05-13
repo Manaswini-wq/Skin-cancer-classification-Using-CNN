@@ -1,0 +1,82 @@
+import os
+import cv2
+import numpy as np
+import pandas as pd
+from imgaug import augmenters as iaa
+from tqdm import tqdm
+import shutil
+
+final_images_folder = "/kaggle/working/HAM10000_augmented"
+shutil.rmtree(final_images_folder, ignore_errors=True)
+os.makedirs(final_images_folder, exist_ok=True)
+
+
+metadata_path = "/kaggle/input/skin-cancer-mnist-ham10000/HAM10000_metadata.csv"
+df = pd.read_csv(metadata_path)
+image_folder_1 = "/kaggle/input/skin-cancer-mnist-ham10000/HAM10000_images_part_1"
+image_folder_2 = "/kaggle/input/skin-cancer-mnist-ham10000/HAM10000_images_part_2"
+
+
+valid_images = {label: [] for label in df["dx"].unique()}
+
+
+print("Copying original images...")
+for image_id, label in tqdm(df[["image_id", "dx"]].values):
+    image_path_1 = os.path.join(image_folder_1, f"{image_id}.jpg")
+    image_path_2 = os.path.join(image_folder_2, f"{image_id}.jpg")
+    output_path = os.path.join(final_images_folder, f"{image_id}.jpg")
+    
+    if os.path.exists(image_path_1) or os.path.exists(image_path_2):
+        # Only copy if not already copied
+        if not os.path.exists(output_path):
+            img = cv2.imread(image_path_1) if os.path.exists(image_path_1) else cv2.imread(image_path_2)
+            cv2.imwrite(output_path, img)
+        valid_images[label].append(image_id)
+
+
+augmenter = iaa.Sequential([
+    iaa.Fliplr(0.5),
+    iaa.Affine(rotate=(-10, 10)),
+    iaa.GaussianBlur(sigma=(0.0, 1.0))
+])
+
+target_size = 7000
+
+for label in df["dx"].unique():
+    class_images = valid_images[label]
+    num_originals = len(class_images)
+    num_needed = max(target_size - num_originals, 0)
+    
+    print(f"\nClass: {label} | Originals: {num_originals} | Needed: {num_needed}")
+    
+    if num_needed == 0:
+        print("Already balanced ✅")
+        continue
+    
+    
+    print("Augmenting...")
+    for i in tqdm(range(num_needed)):
+        img_id = np.random.choice(class_images)
+        original_path = os.path.join(final_images_folder, f"{img_id}.jpg")
+        image = cv2.imread(original_path)
+        
+        augmented_img = augmenter.augment_image(image)
+        new_name = f"{img_id}aug{i}.jpg"  # Unique separator
+        cv2.imwrite(os.path.join(final_images_folder, new_name), augmented_img)
+
+all_files = os.listdir(final_images_folder)
+file_df = pd.DataFrame({"filename": all_files})
+
+
+file_df["image_id"] = file_df["filename"].apply(
+    lambda x: x.split("aug")[0] if "aug" in x else x.split(".")[0]
+)
+
+final_df = file_df.merge(df[["image_id", "dx"]], on="image_id", how="left")
+
+class_counts = final_df["dx"].value_counts()
+print("\nFinal Class Counts:")
+for label in df["dx"].unique():
+    count = class_counts.get(label, 0)
+    status = "" if count == target_size else ""
+    print(f"{status} {label}: {count}/{target_size}")
