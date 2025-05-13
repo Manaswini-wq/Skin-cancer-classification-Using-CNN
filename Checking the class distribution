@@ -1,0 +1,21 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+metadata_path = "/kaggle/input/skin-cancer-mnist-ham10000/HAM10000_metadata.csv"
+df = pd.read_csv(metadata_path)
+
+class_counts = df["dx"].value_counts()
+print("Class distribution:\n", class_counts)
+
+plt.figure(figsize=(10,6))
+sns.barplot(x=class_counts.index, y=class_counts.values, palette="viridis")
+
+plt.title("Class Distribution in HAM10000 Dataset", fontsize=14)
+plt.xlabel("Skin Cancer Type", fontsize=12)
+plt.ylabel("Number of Images", fontsize=12)
+
+for i, count in enumerate(class_counts.values):
+    plt.text(i, count + 50, str(count), ha="center", fontsize=12)
+
+plt.show()
