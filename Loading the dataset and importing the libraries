@@ -1,0 +1,13 @@
+import os
+
+dataset_path = "/kaggle/input/skin-cancer-mnist-ham10000"
+print(os.listdir(dataset_path))
+
+import pandas as pd
+import numpy as np
+import os
+import cv2
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from tensorflow.keras.utils import to_categorical
