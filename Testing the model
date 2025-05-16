@@ -1,0 +1,95 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
+import seaborn as sns
+import os
+
+# 1. Set up test data generator with augmentation matching your training
+test_datagen = ImageDataGenerator(
+    rescale=1./255,
+    rotation_range=30,       # Match your training augmentation
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    vertical_flip=True,
+    brightness_range=[0.8,1.2],
+    fill_mode='reflect'
+)
+
+# 2. Point to your test directory (should contain 7 subfolders with 7000 images each)
+test_dir = '/kaggle/working/HAM10000_augmented'  # UPDATE THIS PATH
+print(f"Test directory contents: {os.listdir(test_dir)}")
+
+# 3. Create test generator
+test_generator = test_datagen.flow_from_directory(
+    test_dir,
+    target_size=(224, 224),  # Match your model input size
+    batch_size=32,
+    class_mode='categorical',
+    shuffle=False           # Critical for correct evaluation
+)
+
+# 4. Verify class balance
+print("\nClass distribution in test set:")
+for cls, count in zip(test_generator.class_indices.keys(), test_generator.classes):
+    print(f"{cls}: {sum(test_generator.classes == test_generator.class_indices[cls])} images")
+
+# 5. Load your trained model
+from tensorflow.keras.models import load_model
+model = load_model('skin_cancer_model.h5')  # Update with your model path
+
+# 6. Evaluate
+print("\nEvaluating model...")
+y_pred = model.predict(test_generator, steps=len(test_generator))
+y_pred_classes = np.argmax(y_pred, axis=1)
+y_true = test_generator.classes
+class_names = list(test_generator.class_indices.keys())
+
+# 7. Comprehensive metrics
+print("\n╔══════════════════════════════════════════╗")
+print("║          Balanced Test Set Metrics      ║")
+print("╠══════════════════════════════════════════╣")
+print(classification_report(y_true, y_pred_classes, 
+                          target_names=class_names,
+                          digits=4))
+
+# 8. Enhanced confusion matrix
+plt.figure(figsize=(12,10))
+cm = confusion_matrix(y_true, y_pred_classes)
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+            xticklabels=class_names,
+            yticklabels=class_names,
+            cbar_kws={'label': 'Misclassifications'})
+plt.title('Confusion Matrix (7000 images per class)', fontsize=14)
+plt.xlabel('Predicted', fontsize=12)
+plt.ylabel('True', fontsize=12)
+plt.xticks(rotation=45)
+plt.show()
+
+# 9. ROC AUC for each class (micro/macro averaged)
+y_test_bin = np.eye(len(class_names))[y_true]  # One-hot encode
+roc_auc = {}
+for i in range(len(class_names)):
+    roc_auc[class_names[i]] = roc_auc_score(y_test_bin[:,i], y_pred[:,i])
+
+print("\nClass-wise ROC AUC Scores:")
+for cls, score in roc_auc.items():
+    print(f"{cls}: {score:.4f}")
+
+# 10. Critical clinical metrics
+malignant_classes = ['mel', 'bcc', 'akiec']  # Highest risk classes
+benign_classes = ['nv', 'bkl', 'df', 'vasc']
+
+malignant_indices = [class_names.index(c) for c in malignant_classes]
+malignant_mask = np.isin(y_true, malignant_indices)
+
+print("\n╔══════════════════════════════════════════╗")
+print("║          Clinical Safety Metrics        ║")
+print("╠══════════════════════════════════════════╣")
+print(f"False Negative Rate (Malignant): {100*sum((y_pred_classes != y_true) & malignant_mask)/sum(malignant_mask):.2f}%")
+print(f"False Positive Rate (Benign): {100*sum((y_pred_classes != y_true) & ~malignant_mask)/sum(~malignant_mask):.2f}%")
+print("╚══════════════════════════════════════════╝")
