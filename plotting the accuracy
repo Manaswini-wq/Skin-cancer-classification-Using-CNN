@@ -1,0 +1,29 @@
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy import stats
+
+# Your data
+epochs = np.arange(1, 31)
+training_acc = np.array([
+    0.3871, 0.5587, 0.6166, 0.6611, 0.6917, 0.7167, 0.7325, 0.7542, 0.7665, 0.7872,
+    0.8006, 0.8094, 0.8293, 0.8442, 0.8453, 0.8511, 0.8587, 0.8618, 0.8678, 0.8762,
+    0.8795, 0.8852, 0.8871, 0.8944, 0.8960, 0.8987, 0.8986, 0.8973, 0.9014, 0.8975
+])
+
+# Calculate trendline
+slope, intercept, _, _, _ = stats.linregress(epochs, training_acc)
+trendline = intercept + slope * epochs
+
+# Plot
+plt.figure(figsize=(10, 5))
+plt.plot(epochs, training_acc, 'bo-', linewidth=1.5, markersize=6, label='Actual Accuracy')
+plt.plot(epochs, trendline, 'r--', linewidth=2, label='Upward Trend')
+plt.title('Steady Improvement in Training Accuracy', fontsize=14)
+plt.xlabel('Epoch', fontsize=12)
+plt.ylabel('Accuracy', fontsize=12)
+plt.xticks(epochs)
+plt.yticks(np.arange(0.3, 1.1, 0.1))
+plt.ylim(0.3, 1.0)
+plt.grid(True, linestyle='--', alpha=0.5)
+plt.legend()
+plt.show()
