@@ -1,0 +1,48 @@
+# Optimizer with weight decay (AdamW)
+optimizer = AdamW(learning_rate=1e-4, weight_decay=1e-4)
+
+model.compile(
+    optimizer=optimizer,
+    loss='categorical_crossentropy',
+    metrics=['accuracy', tf.keras.metrics.AUC(name='auc')]
+)
+
+# Early stopping
+early_stop = EarlyStopping(
+    monitor='val_loss',
+    patience=10,
+    restore_best_weights=True
+)
+
+# Learning rate scheduler
+lr_scheduler = ReduceLROnPlateau(
+    monitor='val_loss',
+    factor=0.5,
+    patience=3,
+    min_lr=1e-6
+)
+
+# Model checkpoint (saved as .keras)
+checkpoint = ModelCheckpoint(
+    'best_model.keras',  # <-- Fix here
+    monitor='val_accuracy',
+    save_best_only=True
+)
+
+callbacks = [early_stop, lr_scheduler, checkpoint]
+import tensorflow as tf
+
+# Check if GPU is available
+if tf.config.list_physical_devices('GPU'):
+    print("✅ GPU is available and will be used for training!")
+    print(tf.config.list_physical_devices('GPU'))
+else:
+    print("❌ GPU not found! Make sure you enabled it in settings.")
+# Training
+history = model.fit(
+    train_generator,
+    epochs=50,
+    validation_data=val_generator,
+    callbacks=callbacks,
+    verbose=1
+)
