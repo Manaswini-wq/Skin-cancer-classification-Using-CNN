@@ -1,0 +1,36 @@
+def build_model():
+    model = Sequential([
+        # Block 1
+        Conv2D(32, (3,3), activation='relu', padding='same', input_shape=(224,224,3)),
+        BatchNormalization(),
+        MaxPooling2D(2,2),
+        
+        # Block 2
+        Conv2D(64, (3,3), activation='relu', padding='same'),
+        BatchNormalization(),
+        MaxPooling2D(2,2),
+        
+        # Block 3
+        Conv2D(128, (3,3), activation='relu', padding='same'),
+        BatchNormalization(),
+        MaxPooling2D(2,2),
+        
+        # Block 4
+        Conv2D(256, (3,3), activation='relu', padding='same'),
+        BatchNormalization(),
+        MaxPooling2D(2,2),
+        
+        # Feature aggregation
+        GlobalAveragePooling2D(),
+        
+        # Classifier
+        Dense(256, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)),
+        Dropout(0.5),
+        Dense(128, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)),
+        Dropout(0.3),
+        Dense(7, activation='softmax')  # 7 classes
+    ])
+    return model
+
+model = build_model()
+model.summary()
